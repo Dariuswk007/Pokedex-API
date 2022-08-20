@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
-from flask_cors import CORS 
+from flask_cors import CORS
 import os
 
 app = Flask(__name__)
@@ -10,7 +10,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.sqlite')
 
 db = SQLAlchemy(app)
-CORS = (app)
+CORS = CORS(app)
 ma = Marshmallow(app)
 
 class Pokedex(db.Model):
@@ -30,7 +30,7 @@ class PokedexSchema(ma.Schema):
     class Meta:
         fields = ('id', 'name', 'dex_entry', 'height', 'weight')
 
-pokedex = PokedexSchema()
+pokedex_schema = PokedexSchema()
 pokedexes = PokedexSchema(many=True)
 
 @app.route('/pokedex/add', methods=['POST'])
@@ -54,9 +54,36 @@ def get_entry():
 
 
 @app.route('/pokedex/delete/<id>', methods=['DELETE'])
-def delete_entry():
+def delete_entry(id):
     pokemon = db.session.query(Pokedex).filter(Pokedex.id == id).first()
+    db.session.delete(pokemon)
+    db.session.commit()
+    return jsonify(f'{name} successfully deleted.')
+
     
+@app.route('/pokedex/get/<id>', methods=['GET'])
+def single_entry(id):
+    pokedex = Pokedex.query.get(id)
+    return pokedex_schema.jsonify(pokedex)
+
+
+@app.route('/pokedex/update/<id>', methods=["PUT"])
+def dex_update(id):
+    post_data = request.get_json()
+    name = post_data.get('name')
+    dex_entry = post_data.get('dex_entry')
+    height = post_data.get('height')
+    weight = post_data.get('weight')
+
+    pokedex = db.session.query(Pokedex).filter(Pokedex.id == id).first()
+
+    pokedex.name = name
+    pokedex.dex_entry = dex_entry
+    pokedex.height = height
+    pokedex.weight = weight
+
+    db.session.commit()
+    return jsonify("The Pokedex Entry has been updated.")
 
 
 
